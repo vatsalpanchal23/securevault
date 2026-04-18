@@ -1,0 +1,27 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# 🔹 Virtual Environment
+venv/
+env/
+.venv/
+
+# 🔹 Environment Variables (IMPORTANT)
+.env
+
+# 🔹 Logs
+logs/
+*.log
+
+# 🔹 OS Files
+.DS_Store
+Thumbs.db
+
+# 🔹 IDE Files
+.vscode/
+.idea/
+secret.key

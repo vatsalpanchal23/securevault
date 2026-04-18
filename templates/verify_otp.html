@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Verify OTP | SecureVault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #1e1e2f, #121212);
+      background-size: 400% 400%;
+      animation: gradientFlow 10s ease infinite;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+      animation: fadeInUp 0.9s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .otp-input {
+      letter-spacing: 12px;
+      font-size: 28px;
+      text-align: center;
+    }
+
+    .securevault-title {
+      font-weight: 700;
+      font-size: 2.5rem;
+      color: #00ffff;
+    }
+
+    .verify-button {
+      background-color: #06b6d4;
+      width: 100%;
+      padding: 0.75rem 1.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 1.125rem;
+      transition: all 0.3s ease;
+      color: white;
+    }
+
+    .verify-button:hover { background-color: #2563eb; transform: scale(1.03); }
+    .verify-button:active { background-color: #1d4ed8; transform: scale(0.98); }
+
+    .disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 255, 255, 0.2);
+      border-left: 4px solid #00ffff;
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: 0.4s;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen">
+
+<div class="glass-card p-10 max-w-md w-full text-center">
+  <h1 class="securevault-title mb-4">SecureVault</h1>
+  <p class="text-lg text-gray-300 mb-6">Two-Factor Authentication</p>
+
+  {% if error %}
+  <div class="bg-red-600 text-white px-4 py-2 rounded-lg mb-4 animate-pulse">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/verify_otp">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <input type="text" name="otp" maxlength="6" placeholder="••••••"
+           class="otp-input bg-transparent border-b-2 border-cyan-400 focus:outline-none w-full mb-6 placeholder-gray-500"
+           required />
+    <button type="submit" class="verify-button">Verify OTP</button>
+  </form>
+
+  <p class="text-sm text-gray-400 mt-6">
+    Didn’t receive it?
+    <button id="resendBtn" class="underline text-cyan-400 ml-1">Resend OTP</button>
+  </p>
+
+  <p id="timerText" class="text-sm text-gray-400 mt-2"></p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const resendBtn = document.getElementById("resendBtn");
+  const timerText = document.getElementById("timerText");
+
+  let cooldown = 60;
+
+  function startCooldown() {
+    resendBtn.classList.add("disabled");
+    resendBtn.textContent = "Resend OTP";
+    timerText.textContent = `You can resend OTP in ${cooldown}s`;
+
+    const interval = setInterval(() => {
+      cooldown--;
+      timerText.textContent = `You can resend OTP in ${cooldown}s`;
+
+      if (cooldown <= 0) {
+        clearInterval(interval);
+        resendBtn.classList.remove("disabled");
+        timerText.textContent = "";
+      }
+    }, 1000);
+  }
+
+  resendBtn.addEventListener("click", () => {
+    window.location.href = "/resend-otp";
+  });
+
+  // Start cooldown on page load
+  startCooldown();
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+

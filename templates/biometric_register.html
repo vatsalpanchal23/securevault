@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Register Biometrics | SecureVault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script defer>
+    async function registerBiometrics() {
+      const res = await fetch('/generate_webauthn_options');
+      const options = await res.json();
+
+      options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
+      options.user.id = Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0));
+
+      const credential = await navigator.credentials.create({ publicKey: options });
+
+      const credentialData = {
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+        response: {
+          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+          attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject)))
+        },
+        type: credential.type
+      };
+
+      const saveRes = await fetch('/save_webauthn_credential', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentialData)
+      });
+
+      const result = await saveRes.json();
+      alert(result.message);
+    }
+  </script>
+</head>
+<body style="font-family: sans-serif; background-color: #111; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column;">
+  <h1 class="text-2xl mb-6">🔐 Register Your Biometrics</h1>
+  <button onclick="registerBiometrics()" style="padding: 10px 20px; background-color: #06b6d4; color: white; border: none; border-radius: 8px; font-size: 1.2rem;">Register</button>
+</body>
+</html>

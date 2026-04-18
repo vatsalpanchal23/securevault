@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login | SecureVault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+
+  <style>
+    /* ===== SecureVault Shared Background (Landing + Auth) ===== */
+    body {
+      background: #020617;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* Ambient glow blobs */
+    .glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(59,130,246,0.18), transparent 70%);
+      filter: blur(120px);
+      z-index: 0;
+      animation: float 12s ease-in-out infinite alternate;
+    }
+
+    .glow.one {
+      top: -200px;
+      left: -200px;
+    }
+
+    .glow.two {
+      bottom: -200px;
+      right: -200px;
+      animation-delay: 4s;
+    }
+
+    @keyframes float {
+      from { transform: translateY(0); }
+      to { transform: translateY(80px); }
+    }
+
+    /* ===== Glass Card ===== */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+      animation: fadeInUp 0.9s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .securevault-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #00ffff;
+    }
+
+    .form-input {
+      background: transparent;
+      border-bottom: 2px solid #06b6d4;
+      padding: 0.5rem;
+      margin-bottom: 1.5rem;
+      color: white;
+      width: 100%;
+      font-size: 1rem;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #00ffff;
+    }
+
+    .login-button {
+      background-color: #06b6d4;
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 1.125rem;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      color: white;
+    }
+
+    .login-button:hover {
+      background-color: #2563eb;
+      transform: scale(1.03);
+    }
+
+    .login-button:active {
+      transform: scale(0.98);
+    }
+
+    .forgot-link {
+      color: #38bdf8;
+      font-size: 0.9rem;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen text-white">
+
+  <!-- Background glow -->
+  <div class="glow one"></div>
+  <div class="glow two"></div>
+
+  <!-- Login Card -->
+  <div class="glass-card p-10 max-w-md w-full text-center relative z-10">
+
+    <h1 class="securevault-title mb-6">SecureVault</h1>
+    <p class="text-gray-300 mb-6">Login to continue</p>
+
+    {% if error %}
+    <div class="bg-red-600 text-white px-4 py-2 rounded-lg mb-4">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <input type="text" name="username" placeholder="Username" class="form-input" required />
+      <input type="password" name="password" placeholder="Password" class="form-input" required />
+
+      <div class="text-right mb-4">
+        <a href="/forgot_password" class="forgot-link">Forgot Password?</a>
+      </div>
+
+      <button type="submit" class="login-button mb-4">Login</button>
+
+      <button type="button"
+              onclick="openQRModal()"
+              class="login-button bg-purple-600 hover:bg-purple-700">
+        Login with QR
+      </button>
+    </form>
+
+    <p class="text-sm text-gray-400 mt-6">
+      Don’t have an account?
+      <a href="/signup" class="text-cyan-400 hover:underline">Sign up</a>
+    </p>
+  </div>
+
+  <!-- QR Login Modal -->
+  <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50">
+    <div class="bg-white text-black p-6 rounded-xl max-w-md w-full text-center relative">
+      <button onclick="closeQRModal()" class="absolute top-2 right-3 text-xl font-bold">×</button>
+      <h2 class="text-xl font-semibold mb-4">Scan QR Code to Login</h2>
+      <img id="qrImage" class="mx-auto w-64 h-64 mb-4 border rounded" />
+      <p id="qrStatus" class="text-sm text-gray-600">Waiting for scan…</p>
+    </div>
+  </div>
+
+  <script>
+    let pollInterval = null;
+
+    function openQRModal() {
+      document.getElementById("qrStatus").innerText = "Generating QR…";
+
+      fetch("/generate_qr_login")
+        .then(r => r.json())
+        .then(d => {
+          qrImage.src = "data:image/png;base64," + d.qr_image;
+          qrModal.classList.remove("hidden");
+          document.getElementById("qrStatus").innerText = "Waiting for approval…";
+          pollForLogin(d.token);
+        })
+        .catch(() => {
+          alert("Unable to generate QR. Is the server running?");
+        });
+    }
+
+    function closeQRModal() {
+      qrModal.classList.add("hidden");
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+
+    function pollForLogin(token) {
+      pollInterval = setInterval(() => {
+        fetch(`/qr_poll/${token}`)
+          .then(r => r.json())
+          .then(d => {
+            if (d.approved) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              location.href = "/dashboard";
+            }
+          })
+          .catch(() => {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            document.getElementById("qrStatus").innerText = "Connection lost.";
+          });
+      }, 2000);
+    }
+  </script>
+
+</body>
+</html>
+
+
+
+
+
+

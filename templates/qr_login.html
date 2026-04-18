@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Approve Login | SecureVault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #1e1e2f, #121212);
+      background-size: 400% 400%;
+      animation: gradientFlow 10s ease infinite;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+      animation: fadeInUp 0.9s ease-out;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .securevault-title { font-size: 2.3rem; font-weight: 700; color: #00ffff; }
+    .login-button {
+      background-color: #06b6d4;
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 1.125rem;
+      transition: 0.3s;
+      color: white;
+    }
+    .login-button:hover { background-color: #2563eb; }
+    .form-input {
+      background: transparent;
+      border-bottom: 2px solid #06b6d4;
+      padding: 0.5rem;
+      margin-bottom: 1.5rem;
+      color: white;
+      width: 100%;
+    }
+    .form-input:focus { outline: none; border-color: #00ffff; }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen text-white">
+
+<div class="glass-card p-10 max-w-md w-full text-center">
+  <h1 class="securevault-title mb-4">SecureVault</h1>
+  <p class="text-gray-300 mb-4">Approve Login</p>
+
+  <div class="bg-yellow-500 bg-opacity-10 border border-yellow-400 text-yellow-300 px-4 py-2 rounded-lg mb-5 text-sm">
+    You are approving a login for another device.<br>
+    Only continue if this was initiated by you.
+  </div>
+
+  {% if error %}
+    <div class="bg-red-600 text-white px-4 py-2 rounded-lg mb-4">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  {% if success %}
+    <div class="bg-green-600 text-white px-4 py-2 rounded-lg mb-4">
+      {{ success }}
+    </div>
+    <p class="text-gray-400 text-sm mt-4">
+      You can now return to your computer.
+    </p>
+  {% else %}
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <input type="text" name="username" placeholder="Username" class="form-input" required />
+      <input type="password" name="password" placeholder="Password" class="form-input" required />
+
+      <button type="submit" class="login-button">
+        Approve Login
+      </button>
+    </form>
+  {% endif %}
+</div>
+
+</body>
+</html>
+
+
+

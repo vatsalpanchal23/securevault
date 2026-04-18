@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Logs – SecureVault</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        referrerpolicy="no-referrer" />
+
+<style>
+  :root {
+    --card: #2d3748;
+  }
+
+  body {
+    background: linear-gradient(180deg, #0f172a, #020617);
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  .card { background: var(--card); }
+
+  .activity-card {
+    transition: transform .25s ease, box-shadow .25s ease;
+    animation: cardBreath 12s ease-in-out infinite;
+  }
+  .activity-card:hover { animation-play-state: paused; }
+
+  .activity-item {
+    transition: transform .2s ease, background-color .2s ease;
+  }
+  .activity-item:hover {
+    transform: translateX(4px);
+    background-color: rgba(255,255,255,.03);
+  }
+
+  .risk-high {
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(to right, rgba(239,68,68,.08), transparent);
+  }
+  .risk-medium {
+    border-left: 4px solid #facc15;
+    background: linear-gradient(to right, rgba(250,204,21,.08), transparent);
+  }
+
+  @keyframes cardBreath {
+    0%,100% { box-shadow: 0 10px 20px rgba(0,0,0,.25); }
+    50% { box-shadow: 0 16px 30px rgba(0,0,0,.35); }
+  }
+
+/* SCROLLABLE LOG LIST */
+.log-scroll {
+  max-height: 420px;   /* fixed height for log list */
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.log-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.log-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+}
+
+</style>
+</head>
+
+<div class="flex justify-between items-center mb-8">
+
+  <!-- LEFT: Title -->
+  <div class="flex items-center gap-3">
+    <i class="fa-solid fa-shield text-blue-400 text-xl"></i>
+    <h1 class="text-2xl font-semibold">Security Logs</h1>
+  </div>
+
+  <!-- RIGHT: Filters + Back -->
+  <div class="flex items-center gap-3">
+
+    <!-- Filters -->
+    <a href="/security-logs"
+       class="px-4 py-2 rounded-lg text-sm transition
+              {{ '' if risk_filter else 'bg-gray-700' }}">
+      All Events
+    </a>
+
+    <a href="/security-logs?risk=high"
+       class="px-4 py-2 rounded-lg text-sm text-red-400 transition
+              {{ 'bg-red-500/10' if risk_filter == 'high' else 'bg-gray-700' }}">
+      High Risk Only
+    </a>
+
+    <!-- Back -->
+    <a href="/dashboard"
+       class="ml-2 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition">
+      Back to Dashboard
+    </a>
+
+  </div>
+</div>
+
+
+<body>
+
+<header class="flex justify-between items-center px-6 py-4 bg-gray-900 shadow">
+  <a href="/dashboard" class="text-xl font-semibold hover:opacity-80">
+    ← SecureVault
+  </a>
+</header>
+
+<main class="p-6">
+  <div class="max-w-7xl mx-auto">
+
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-semibold">🛡️ Security Logs</h1>
+      <a href="/dashboard"
+         class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition">
+        Back to Dashboard
+      </a>
+    </div>
+
+    {% if logs %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+      {% set grouped = {} %}
+      {% for log in logs %}
+        {% set day = log.created_at.strftime('%Y-%m-%d') %}
+        {% if day not in grouped %}
+          {% set _ = grouped.update({ day: [] }) %}
+        {% endif %}
+        {% set _ = grouped[day].append(log) %}
+      {% endfor %}
+
+      {% for day in grouped.keys() | sort(reverse=True) %}
+      <div class="card activity-card rounded-xl p-5">
+
+        <!-- Date -->
+        <div class="mb-4 flex items-center gap-2 text-cyan-400 font-semibold">
+          <i class="fa-solid fa-calendar-day"></i>
+          {{ day }}
+        </div>
+
+        <!-- ✅ SCROLLABLE LOG LIST -->
+        <div class="log-scroll space-y-4">
+        {% for log in grouped[day] %}
+
+          {% set risk =
+            "risk-high" if log.event in [
+              "FAILED_LOGIN",
+              "LOGIN_FAILED",
+              "OTP_VERIFICATION_FAILED",
+              "QR_LOGIN_REJECTED",
+              "ACCOUNT_LOCKED"
+            ]
+            else "risk-medium" if log.event in [
+              "LOGIN_FROM_NEW_DEVICE",
+              "PASSWORD_CHANGED",
+              "TWO_FA_ENABLED"
+            ]
+            else ""
+          %}
+
+          <div class="flex gap-3 items-start activity-item p-2 rounded {{ risk }}">
+
+            <!-- Icon -->
+            <div class="pt-1">
+              {% if "LOGIN" in log.event %}
+                <i class="fa-solid fa-right-to-bracket text-blue-400"></i>
+              {% elif "OTP" in log.event or "2FA" in log.event %}
+                <i class="fa-solid fa-shield-halved text-green-400"></i>
+              {% elif "QR" in log.event %}
+                <i class="fa-solid fa-qrcode text-purple-400"></i>
+              {% elif "PASSWORD" in log.event %}
+                <i class="fa-solid fa-key text-yellow-400"></i>
+              {% elif "LOCKED" in log.event %}
+                <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+              {% else %}
+                <i class="fa-solid fa-user-shield text-gray-400"></i>
+              {% endif %}
+            </div>
+
+            <!-- Text -->
+            <div class="flex-1">
+              <p class="font-medium text-sm">
+                {{ log.event.replace('_',' ').title() }}
+              </p>
+
+              {% if log.ip_address %}
+                {% if last_ip and log.ip_address != last_ip and log.event == "LOGIN_SUCCESS" %}
+                  <button
+                    onclick="openModal('{{ log.ip_address }}',
+                                       '{{ log.created_at.strftime('%d %b %Y, %I:%M %p') }}')"
+                    class="text-xs text-yellow-400 font-semibold hover:underline mt-1">
+                    ⚠ Unrecognized IP: {{ log.ip_address }}
+                  </button>
+                {% else %}
+                  <p class="text-xs opacity-70 mt-1">
+                    IP: {{ log.ip_address }}
+                  </p>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <!-- Time -->
+            <div class="text-xs opacity-60 whitespace-nowrap">
+              {{ log.created_at.strftime('%H:%M') }}
+            </div>
+
+          </div>
+
+        {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+
+    {% else %}
+    <div class="text-center py-20 opacity-70">
+      <p class="text-lg">No security activity yet</p>
+    </div>
+    {% endif %}
+
+  </div>
+</main>
+
+<!-- WAS THIS YOU MODAL -->
+<div id="confirmModal"
+     class="fixed inset-0 hidden items-center justify-center bg-black/60 z-50">
+  <div class="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-sm">
+    <h3 class="text-lg font-semibold text-yellow-400 mb-2">
+      ⚠ Unrecognized Login
+    </h3>
+    <p class="text-sm text-gray-300 mb-4">
+      We noticed a login from a new IP address. Was this you?
+    </p>
+    <div id="modalDetails"
+         class="text-xs text-gray-400 mb-4"></div>
+
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal()"
+              class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-sm">
+        Yes, it was me
+      </button>
+      <a href="/dashboard"
+         class="px-4 py-2 rounded bg-red-600 hover:bg-red-500 text-sm">
+        No, secure my account
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(ip, time) {
+  document.getElementById("modalDetails").innerText =
+    "IP: " + ip + " • Time: " + time;
+  document.getElementById("confirmModal").classList.remove("hidden");
+  document.getElementById("confirmModal").classList.add("flex");
+}
+
+function closeModal() {
+  document.getElementById("confirmModal").classList.add("hidden");
+  document.getElementById("confirmModal").classList.remove("flex");
+}
+</script>
+
+</body>
+</html>
+
+
+
+
+
+

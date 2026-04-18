@@ -1,0 +1,3 @@
+SELECT DATABASE();
+USE password_manager;
+SHOW TABLES;

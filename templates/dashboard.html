@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureVault Dashboard</title>
+
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        referrerpolicy="no-referrer" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --text-color: #e5e7eb;
+      --card-color: #111827;
+      --input-color: #1f2933;
+      --button-bg: #1f2933;
+      --border-color: #1f2933;
+      --accent: #3b82f6;
+    }
+    .light {
+      --bg-color: #f8fafc;
+      --text-color: #0f172a;
+      --card-color: #ffffff;
+      --input-color: #e5e7eb;
+      --button-bg: #e5e7eb;
+      --border-color: #e5e7eb;
+      --accent: #2563eb;
+    }
+
+    body { background-color: var(--bg-color); color: var(--text-color); }
+    .card { background-color: var(--card-color); }
+    .input-box { background-color: var(--input-color); color: var(--text-color); }
+    .btn { background-color: var(--button-bg); color: var(--text-color); }
+    .btn:hover { opacity: .9; }
+
+    .sidebar {
+      width: 280px;
+      background: linear-gradient(180deg, rgba(59,130,246,.08), transparent 40%), var(--card-color);
+      border-right: 1px solid var(--border-color);
+      transition: width .25s ease, left .25s ease;
+    }
+    .sidebar.collapsed { width: 78px; }
+    .sidebar a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.6rem;
+      margin: 0 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: background .15s ease, color .15s ease, transform .1s ease;
+    }
+    .sidebar a:hover { background: rgba(59,130,246,.12); transform: translateX(2px); }
+    .sidebar a.active { background: rgba(59,130,246,.22); color: #93c5fd; }
+    .sidebar.collapsed a span { display: none; }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 40;
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar { position: fixed; left: -300px; top: 0; height: 100vh; z-index: 50; }
+      .sidebar.open { left: 0; }
+      .overlay.show { display: block; }
+    }
+
+    .section {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 320ms ease, transform 320ms ease;
+      border: 1px solid var(--border-color);
+    }
+    .section.visible { opacity: 1; transform: none; }
+
+    .tool-card {
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .tool-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 40px rgba(0,0,0,.35);
+    }
+/* === Unified Button System === */
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  height: 42px;                 /* 🔑 single source of truth */
+  padding: 0 16px;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* Color variants */
+.btn-primary {
+  background-color: var(--accent);
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #374151; /* gray-700 */
+  color: white;
+}
+
+.btn-danger {
+  background-color: #dc2626; /* red-600 */
+  color: white;
+}
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.input-box {
+  height: 42px;
+}
+
+/* === Button Success State === */
+.btn-success {
+  background-color: #16a34a !important; /* green-600 */
+  pointer-events: none;
+}
+
+.btn-success .btn-text {
+  display: none;
+}
+
+.btn-success .checkmark {
+  display: inline-flex;
+}
+
+.checkmark {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  animation: popIn 0.25s ease-out;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===============================
+   MICRO-ANIMATION POLISH (FINAL)
+   =============================== */
+
+/* 1️⃣ Button Interaction Feedback */
+button,
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+button:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+button:active {
+  transform: scale(0.96);
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+/* 2️⃣ Disabled / Loading Button State */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* 3️⃣ Vault Table Row Polish */
+#vaultBody tr {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+#vaultBody tr:hover {
+  background-color: rgba(59,130,246,0.08);
+  transform: translateX(3px);
+}
+
+/* 4️⃣ Empty State Fade-In */
+.empty-state {
+  animation: emptyFade 0.3s ease-out forwards;
+}
+
+@keyframes emptyFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 5️⃣ Toast Animation Upgrade */
+#toastContainer > div {
+  animation: toastIn 0.3s ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 6️⃣ Back-to-Top Button Polish */
+#backToTop {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+#backToTop:hover {
+  transform: translateY(-4px);
+}
+
+/* 7️⃣ Section Reveal Timing (refinement) */
+.section {
+  transition: opacity 350ms ease, transform 350ms ease;
+}
+
+  </style>
+</head>
+
+
+
+<body id="body">
+<div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
+
+<div class="flex min-h-screen">
+
+  <!-- SIDEBAR -->
+<!-- SIDEBAR -->
+<aside id="sidebar" class="sidebar flex flex-col py-4">
+
+  <!-- USER BLOCK -->
+  <div class="px-4 pb-4 border-b" style="border-color: var(--border-color)">
+    <div class="flex items-center gap-3">
+      <img src="{{ profile_photo_url }}"
+           class="w-11 h-11 rounded-full ring-2 ring-blue-500/30"
+           onerror="setDefaultAvatar(this)">
+      <div class="truncate">
+        <p class="font-semibold leading-tight">{{ username }}</p>
+        <p class="text-xs opacity-60">@{{ username|lower }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <nav class="mt-4 space-y-4 text-sm">
+
+    <!-- CORE -->
+    <div>
+      <p class="px-4 mb-1 text-xs uppercase tracking-wider opacity-50">
+        Core
+      </p>
+
+      <a href="/dashboard" class="active">
+        <i class="fas fa-home w-5"></i><span>Dashboard</span>
+      </a>
+
+      <a href="#vault">
+        <i class="fas fa-key w-5"></i><span>Password Vault</span>
+      </a>
+    </div>
+
+    <!-- SECURITY -->
+    <div>
+      <p class="px-4 mb-1 text-xs uppercase tracking-wider opacity-50">
+        Security
+      </p>
+
+      <a href="#file">
+        <i class="fas fa-lock w-5"></i><span>File Encryption</span>
+      </a>
+
+      <a href="/security-lab">
+        <i class="fas fa-flask w-5"></i><span>Security Lab</span>
+      </a>
+
+      <a href="/security-logs">
+        <i class="fas fa-shield-alt w-5"></i><span>Security Logs</span>
+      </a>
+    </div>
+
+    <!-- ACCOUNT -->
+    <div>
+      <p class="px-4 mb-1 text-xs uppercase tracking-wider opacity-50">
+        Account
+      </p>
+
+      <a href="{{ url_for('activity') }}">
+        <i class="fas fa-history w-5"></i><span>Account Activity</span>
+      </a>
+
+    
+      
+
+      <a href="/backup">
+        <i class="fas fa-lock w-5"></i><span>Encrypted Backup</span>
+      </a>
+
+      <a href="/restore" class="text-red-400">
+        <i class="fas fa-undo w-5"></i><span>Restore Vault</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <!-- LOGOUT -->
+  <div class="mt-auto px-2">
+    <a href="/logout" class="text-red-400">
+      <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+    </a>
+  </div>
+
+</aside>
+
+
+  <!-- MAIN WRAPPER -->
+  <div class="flex-1 flex flex-col">
+
+    <!-- TOP BAR -->
+    <!-- TOP BAR / DASHBOARD HEADER -->
+<header
+  class="sticky top-0 z-30 border-b backdrop-blur"
+  style="background: rgba(17,24,39,.82); border-color: var(--border-color)"
+>
+  <div class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+
+    <!-- LEFT: NAV + CONTEXT -->
+    <div class="flex items-center gap-5">
+
+      <!-- Sidebar toggles -->
+      <button class="lg:hidden text-2xl opacity-80 hover:opacity-100"
+              onclick="toggleSidebar(true)">☰</button>
+
+      <button class="hidden lg:block text-xl opacity-70 hover:opacity-100"
+              onclick="toggleDesktopSidebar()">⫶</button>
+
+      <!-- Page identity -->
+      <div>
+        <h1 class="text-xl font-semibold leading-tight">
+          Dashboard
+        </h1>
+        <p class="text-sm opacity-60">
+          Manage your vault, encryption tools, and security activity
+        </p>
+      </div>
+
+      <!-- Security status -->
+      <span
+        class="hidden sm:inline-flex items-center gap-2
+           px-3 py-1 rounded-full text-xs font-medium
+           {% if security_level == 'secure' %}
+           bg-green-500/10 text-green-400 border border-green-500/20
+           {% elif security_level == 'warning' %}
+           bg-yellow-500/10 text-yellow-400 border border-yellow-500/20
+           {% else %}
+           bg-red-500/10 text-red-400 border border-red-500/20
+           {% endif %}">
+  <span class="w-2 h-2 rounded-full
+        {% if security_level == 'secure' %}bg-green-400
+        {% elif security_level == 'warning' %}bg-yellow-400
+        {% else %}bg-red-400{% endif %}"></span>
+  {{ security_status }}
+</span>
+    </div>
+
+    <!-- RIGHT: SEARCH + PROFILE -->
+    <div class="flex items-center gap-4">
+
+      <!-- Global search -->
+      <div class="hidden md:block relative">
+        <input
+          id="globalSearch"
+          oninput="filterVault(this.value)"
+          placeholder="Search vault…"
+          class="pl-9 pr-3 py-2 rounded-lg text-sm input-box
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style="width: 260px"
+        />
+        <i class="fas fa-search absolute left-3 top-3 opacity-50 text-sm"></i>
+      </div>
+
+      <!-- Profile (click to open profile modal) -->
+      <img
+        src="{{ profile_photo_url }}"
+        class="w-10 h-10 rounded-full ring-2 ring-blue-500/30 cursor-pointer
+               hover:opacity-90 transition"
+        onclick="openProfileModal()"
+        onerror="setDefaultAvatar(this)"
+        title="View profile"
+        aria-label="Open profile settings"
+      />
+
+    </div>
+
+  </div>
+</header>
+
+
+    <!-- CONTENT -->
+    <main class="p-8 space-y-10 max-w-7xl mx-auto w-full">
+
+
+<!-- SECTION: OVERVIEW -->
+<div class="space-y-3">
+  <h2 class="text-lg font-semibold tracking-tight">
+    Overview
+  </h2>
+  <p class="text-sm opacity-60">
+    Quick snapshot of your vault and security status
+  </p>
+</div>
+
+<!-- PART 2 CONTINUES HERE -->
+<!-- STATS -->
+
+<section class="card p-6 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-6">
+
+  <!-- VAULT ITEMS -->
+  <div class="flex items-center gap-4">
+    <div class="text-3xl">🔐</div>
+    <div>
+      <p class="text-xs uppercase tracking-wide opacity-60">
+        Vault Items
+      </p>
+      <p id="statVault" class="text-2xl font-semibold">
+        0
+      </p>
+    </div>
+  </div>
+
+  <!-- LAST LOGIN -->
+  <div class="flex items-center gap-4">
+    <div class="text-3xl">🕒</div>
+    <div>
+      <p class="text-xs uppercase tracking-wide opacity-60">
+        Last Login
+      </p>
+      <p class="text-lg font-medium">
+        {{ last_login_time.strftime('%d %b %Y, %H:%M') if last_login_time else 'First login' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- SECURITY STATUS -->
+  <div class="flex items-center gap-4">
+    <div class="text-3xl">🛡️</div>
+    <div>
+      <p class="text-xs uppercase tracking-wide opacity-60">
+        Security Status
+      </p>
+
+      <p class="text-lg font-medium
+        {% if security_level == 'secure' %}text-green-400
+        {% elif security_level == 'warning' %}text-yellow-400
+        {% else %}text-red-400{% endif %}">
+        {{ security_status }}
+      </p>
+
+      {% if security_level != 'secure' %}
+      <!-- 🔐 CSRF FIX APPLIED HERE -->
+      <form method="POST" action="/mark_safe" class="mt-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button
+          class="px-3 py-1.5 bg-green-600 hover:bg-green-500 rounded-lg text-xs">
+          Mark as Safe
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+</section>
+
+<!-- FILE ENCRYPTION -->
+<section id="file" class="section card p-6 rounded-2xl space-y-5">
+
+  <!-- Section header -->
+  <div>
+    <h2 class="text-lg font-semibold">
+      🗄️ File Encryption
+    </h2>
+    <p class="text-sm opacity-60">
+      Secure your files using strong encryption. Decryption requires the same password.
+    </p>
+  </div>
+
+  <!-- Encrypt form -->
+  <form
+    action="/encrypt"
+    method="post"
+    enctype="multipart/form-data"
+    class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        File
+      </label>
+      <input
+        type="file"
+        name="file"
+        required
+        class="w-full p-2 rounded input-box">
+    </div>
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        Password (optional)
+      </label>
+      <input
+        type="password"
+        name="password"
+        placeholder="Extra protection"
+        class="w-full p-2 rounded input-box">
+    </div>
+
+    <button class="btn-primary">
+      Encrypt File
+    </button>
+
+  </form>
+
+</section>
+
+
+<section class="section card p-6 rounded-2xl space-y-5">
+
+  <!-- Section header -->
+  <div>
+    <h2 class="text-lg font-semibold">
+      🔓 File Decryption
+    </h2>
+    <p class="text-sm opacity-60">
+      Decrypt files using the same password used during encryption.
+    </p>
+  </div>
+
+  <!-- Decrypt form -->
+  <form
+  action="/decrypt"
+  method="post"
+  enctype="multipart/form-data"
+  onsubmit="event.preventDefault(); reAuthenticateAndDecrypt(this);"
+  class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div>
+    <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+      Encrypted File
+    </label>
+    <input
+      type="file"
+      name="file"
+      required
+      class="w-full p-2 rounded input-box">
+  </div>
+
+  <div>
+    <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+      Password (optional)
+    </label>
+    <input
+      type="password"
+      name="password"
+      placeholder="Used during encryption"
+      class="w-full p-2 rounded input-box">
+  </div>
+
+  <button class="btn-secondary">
+    Decrypt File
+  </button>
+
+</form>
+</section>
+
+
+
+<section id="generator" class="section card p-6 rounded-2xl space-y-5">
+
+  <!-- Section header -->
+  <div>
+    <h2 class="text-lg font-semibold">
+      🔑 Password Generator
+    </h2>
+    <p class="text-sm opacity-60">
+      Generate strong, random passwords for secure account creation.
+    </p>
+  </div>
+
+  <!-- Generator controls -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        Password Length
+      </label>
+      <input
+        id="passLength"
+        type="number"
+        min="6"
+        max="64"
+        placeholder="e.g. 16"
+        class="w-full p-2 rounded input-box">
+    </div>
+
+    <button onclick="generatePassword()" class="btn-primary">
+      Generate Password
+    </button>
+
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        Generated Password
+      </label>
+      <input
+        id="generatedPassword"
+        readonly
+        class="w-full p-2 rounded input-box font-mono">
+    </div>
+
+  </div>
+
+</section>
+
+
+<section id="vault" class="section card p-6 rounded-2xl space-y-6">
+
+  <!-- Section header -->
+  <div>
+    <h2 class="text-lg font-semibold">
+      📁 Password Vault
+    </h2>
+    <p class="text-sm opacity-60">
+      Securely store and manage credentials for your services.
+    </p>
+  </div>
+
+  <!-- Add password form -->
+  <form
+    action="/add_password"
+    method="POST"
+    class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        Service
+      </label>
+      <input
+        name="service_name"
+        placeholder="e.g. Gmail"
+        required
+        class="w-full p-2 rounded input-box">
+    </div>
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        Username
+      </label>
+      <input
+        name="service_username"
+        placeholder="user@email.com"
+        required
+        class="w-full p-2 rounded input-box">
+    </div>
+
+    <div>
+      <label class="block text-xs uppercase tracking-wide opacity-60 mb-1">
+        Password
+      </label>
+      <input
+        name="service_password"
+        type="password"
+        placeholder="••••••••"
+        required
+        class="w-full p-2 rounded input-box">
+    </div>
+
+    <button class="btn-primary">
+      Add to Vault
+    </button>
+  </form>
+
+  <!-- EMPTY STATE: NO VAULT ITEMS -->
+  <div id="vaultEmptyState" class="empty-state hidden">
+    <div class="text-4xl mb-2">🔐</div>
+    <h3 class="text-lg font-semibold">No passwords yet</h3>
+    <p class="text-sm opacity-70">
+      Add your first password to start using SecureVault.
+    </p>
+  </div>
+
+  <!-- Vault table -->
+  <div id="vaultTableWrapper"
+       class="overflow-x-auto rounded-xl border"
+       style="border-color: var(--border-color)">
+
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-800/60 text-xs uppercase tracking-wide opacity-80">
+        <tr>
+          <th class="p-3 text-left">Service</th>
+          <th class="p-3 text-left">Username</th>
+          <th class="p-3 text-left">Password</th>
+          <th class="p-3 text-center">View</th>
+          <th class="p-3 text-center text-red-400">Delete</th>
+        </tr>
+      </thead>
+      <tbody id="vaultBody" class="divide-y"
+             style="border-color: var(--border-color)">
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- EMPTY STATE: SEARCH NO RESULTS -->
+  <div id="vaultNoResults" class="empty-state hidden">
+    <div class="text-4xl mb-2">🔍</div>
+    <p>No matching passwords found</p>
+  </div>
+
+</section>
+
+
+<section class="section card p-6 rounded-2xl tool-card"
+         onclick="window.location.href='/security-lab'">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-semibold mb-1">🧪 Security Lab</h2>
+      <p class="text-sm opacity-70">
+        Interactive breach simulation showing encrypted vs plaintext exposure.
+      </p>
+    </div>
+    <div class="text-3xl opacity-80">→</div>
+  </div>
+</section>
+
+
+      <div id="toastContainer" class="fixed top-6 right-6 space-y-3 z-50"></div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODALS + BUTTONS (unchanged) -->
+<div id="masterAuthModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-50">
+  <div class="bg-gray-800 p-6 rounded-xl w-96">
+    <h2 class="text-white text-lg mb-4">Confirm Master Password</h2>
+    <input id="masterAuthInput" type="password" placeholder="Enter master password" class="w-full p-2 rounded bg-gray-700 text-white mb-4">
+    <div class="flex justify-end gap-3">
+      <button onclick="closeMasterAuth()" class="text-gray-300">Cancel</button>
+      <button onclick="submitMasterAuth()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<button id="backToTop"
+  onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+  class="fixed bottom-6 right-6 hidden p-3 rounded-full shadow-lg btn text-lg z-40">
+  ⬆
+</button>
+
+<!-- SCRIPTS -->
+
+<script>
+/* =========================
+   GLOBAL SHORTCUTS
+========================= */
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && !e.target.matches("input, textarea")) {
+    e.preventDefault();
+    const search = document.getElementById("globalSearch");
+    if (search) search.focus();
+  }
+});
+
+/* =========================
+   UTILS
+========================= */
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function toggleDesktopSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function toggleSidebar(open) {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  if (open) {
+    sb.classList.add('open');
+    ov.classList.add('show');
+  } else {
+    sb.classList.remove('open');
+    ov.classList.remove('show');
+  }
+}
+
+function getCSRF() {
+  const m = document.querySelector('meta[name="csrf-token"]');
+  return m ? m.getAttribute('content') : '';
+}
+
+function setDefaultAvatar(img) {
+  img.src = "{{ url_for('static', filename='default-avatar.png') }}";
+}
+
+/* =========================
+   MASTER PASSWORD FLOW
+========================= */
+let pendingViewId = null;
+let pendingDeleteId = null;
+
+async function submitMasterAuth() {
+  const password = masterAuthInput.value;
+
+  const r = await fetch("/verify-master-password", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRF()
+    },
+    body: JSON.stringify({ password })
+  });
+
+  const d = await r.json();
+  if (!d.success) {
+    showToast("Invalid master password", "error");
+    return;
+  }
+
+  if (pendingViewId !== null) {
+    const id = pendingViewId;
+    pendingViewId = null;
+
+    const res = await fetch(`/view_password/${id}`);
+    const data = await res.json();
+
+    const cell = document.getElementById(`pwd-${id}`);
+    cell.textContent = data.password;
+
+    showToast("Password revealed for 5 seconds", "info");
+    setTimeout(() => cell.textContent = "••••••", 5000);
+  }
+
+  if (pendingDeleteId !== null) {
+    const id = pendingDeleteId;
+    pendingDeleteId = null;
+
+    showToast("Password deleted", "success");
+    setTimeout(() => {
+      window.location.href = `/delete_password/${id}`;
+    }, 400);
+  }
+
+  closeMasterAuth();
+}
+
+function confirmView(id) {
+  pendingViewId = id;
+  pendingDeleteId = null;
+  masterAuthModal.classList.remove("hidden");
+}
+
+function confirmDelete(id) {
+  pendingDeleteId = id;
+  pendingViewId = null;
+  masterAuthModal.classList.remove("hidden");
+}
+
+function closeMasterAuth() {
+  masterAuthModal.classList.add("hidden");
+  masterAuthInput.value = "";
+  pendingViewId = pendingDeleteId = null;
+}
+
+/* =========================
+   PASSWORD GENERATOR
+========================= */
+async function generatePassword() {
+  const len = document.getElementById("passLength").value || 12;
+  const r = await fetch(`/generate-password?length=${len}`);
+  const d = await r.json();
+  document.getElementById("generatedPassword").value = d.password || "";
+}
+
+/* =========================
+   VAULT LOGIC (UPDATED)
+========================= */
+async function searchVault() {
+  const r = await fetch("/search_passwords");
+  const d = await r.json();
+
+  const stat = document.getElementById("statVault");
+  const body = document.getElementById("vaultBody");
+  const emptyState = document.getElementById("vaultEmptyState");
+  const tableWrapper = document.getElementById("vaultTableWrapper");
+  const noResults = document.getElementById("vaultNoResults");
+
+  if (stat) stat.textContent = d.vault.length;
+
+  // EMPTY VAULT
+  if (d.vault.length === 0) {
+    body.innerHTML = "";
+    emptyState.classList.remove("hidden");
+    tableWrapper.classList.add("hidden");
+    noResults.classList.add("hidden");
+    return;
+  }
+
+  // HAS DATA
+  emptyState.classList.add("hidden");
+  tableWrapper.classList.remove("hidden");
+  noResults.classList.add("hidden");
+
+  body.innerHTML = d.vault.map(v => `
+    <tr>
+      <td class="p-2">${v.service_name}</td>
+      <td class="p-2">${v.service_username}</td>
+      <td class="p-2" id="pwd-${v.id}">••••••</td>
+      <td class="p-2 text-center">
+        <button onclick="confirmView(${v.id})" class="btn px-2">👁</button>
+      </td>
+      <td class="p-2 text-center">
+        <button onclick="confirmDelete(${v.id})" class="btn bg-red-600 px-2">🗑️</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function filterVault(query) {
+  const rows = document.querySelectorAll("#vaultBody tr");
+  const noResults = document.getElementById("vaultNoResults");
+
+  query = query.toLowerCase();
+  let visible = 0;
+
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    const show = text.includes(query);
+    row.style.display = show ? "" : "none";
+    if (show) visible++;
+  });
+
+  if (rows.length > 0 && visible === 0) {
+    noResults.classList.remove("hidden");
+  } else {
+    noResults.classList.add("hidden");
+  }
+}
+
+/* =========================
+   UI FEEDBACK
+========================= */
+function showToast(message, type = "info") {
+  const container = document.getElementById("toastContainer");
+  const t = document.createElement("div");
+
+  t.className = `px-4 py-3 rounded shadow-lg text-sm card border ${
+    type === "error" ? "border-red-500 text-red-400" :
+    type === "success" ? "border-green-500 text-green-400" :
+    "border-blue-500 text-blue-400"
+  }`;
+
+  t.textContent = message;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+/* =========================
+   SECTION ANIMATIONS
+========================= */
+function initSectionAnimations() {
+  const sections = document.querySelectorAll(".section");
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.classList.add("visible");
+    });
+  }, { threshold: 0.25 });
+
+  sections.forEach(s => io.observe(s));
+}
+
+/* =========================
+   BACK TO TOP
+========================= */
+const backBtn = document.getElementById("backToTop");
+window.addEventListener("scroll", () => {
+  if (!backBtn) return;
+  backBtn.classList.toggle("hidden", window.scrollY < 300);
+});
+
+/* =========================
+   INIT
+========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  searchVault();
+  initSectionAnimations();
+  if (typeof loadSecurityLab === "function") loadSecurityLab();
+});
+
+function openProfileModal() {
+  document.getElementById("profileModal").classList.remove("hidden");
+}
+
+function closeProfileModal() {
+  document.getElementById("profileModal").classList.add("hidden");
+}
+
+async function reAuthenticateAndDecrypt(form) {
+    const password = prompt("Enter your master password to continue:");
+
+    if (!password) return;
+
+    // Step 1: verify master password
+    const res = await fetch("/verify-master-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+        alert("Wrong password");
+        return;
+    }
+
+    // Step 2: submit original form (decrypt)
+    form.submit();
+}
+
+</script>
+
+<!-- PROFILE MODAL -->
+<div id="profileModal"
+     class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center z-50">
+
+  <div class="card p-6 rounded-2xl w-96 space-y-5 relative">
+
+    <button onclick="closeProfileModal()"
+            class="absolute top-3 right-3 opacity-60 hover:opacity-100">✕</button>
+
+    <!-- Profile Image -->
+    <div class="flex flex-col items-center gap-4">
+      <img src="{{ profile_photo_url }}"
+           class="w-32 h-32 rounded-full ring-4 ring-blue-500/40 object-cover"
+           onerror="setDefaultAvatar(this)">
+
+      <!-- Change Photo -->
+      <form action="/upload_photo"
+            method="POST"
+            enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file"
+               name="profile_photo"
+               accept="image/*"
+               onchange="this.form.submit()"
+               class="text-sm">
+      </form>
+    </div>
+
+    <!-- Edit Username -->
+    <form action="/update_name" method="POST" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label class="text-xs uppercase opacity-60">Account Name</label>
+      <input
+        name="username"
+        value="{{ username }}"
+        class="w-full p-2 rounded input-box"
+        required
+      >
+
+      <button class="btn-primary w-full">
+        Save Changes
+      </button>
+    </form>
+
+  </div>
+</div>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,67 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="mb-4 p-3 rounded text-sm
+           {{ 'bg-green-700' if category=='success' else 'bg-red-700' }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Secure Backup – SecureVault</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+
+<div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-lg p-8">
+
+  <!-- Header -->
+  <h1 class="text-2xl font-bold mb-1">🛡️ Secure Vault Backup</h1>
+  <p class="text-gray-400 mb-8">
+    Safely back up your vault and restore it later inside SecureVault.
+  </p>
+
+  <!-- Backup Section -->
+  <div class="border border-gray-700 rounded-lg p-6 mb-8">
+    <h2 class="text-lg font-semibold mb-4">Create Encrypted Backup</h2>
+
+    <form action="/export_vault_encrypted" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label class="text-sm text-gray-400">Account Password</label>
+      <input type="password" name="confirm_password" required
+             class="w-full mt-1 mb-4 p-3 rounded bg-gray-900">
+
+      <label class="text-sm text-gray-400">Backup Password</label>
+      <input type="password" name="backup_password" required
+             class="w-full mt-1 mb-6 p-3 rounded bg-gray-900">
+
+      <button class="w-full bg-blue-600 hover:bg-blue-700 transition p-3 rounded font-medium">
+        Download Encrypted Backup
+      </button>
+    </form>
+  </div>
+
+  <!-- Restore CTA -->
+  <div class="flex items-center justify-between bg-gray-900 rounded-lg p-4">
+    <div>
+      <p class="font-medium">Need to restore your vault?</p>
+      <p class="text-sm text-gray-400">Use your encrypted backup file.</p>
+    </div>
+    <a href="/restore"
+       class="bg-red-600 hover:bg-red-700 transition px-4 py-2 rounded text-sm font-medium">
+      Restore
+    </a>
+  </div>
+
+</div>
+</body>
+</html>
+
+
+

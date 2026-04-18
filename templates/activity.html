@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Activity – SecureVault</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        referrerpolicy="no-referrer" />
+
+<style>
+  :root {
+    --bg: #1f2937;
+    --card: #2d3748;
+    --text: #ffffff;
+  }
+
+  body {
+    color: var(--text);
+    background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+    min-height: 100vh;
+  }
+
+  .card {
+    background: var(--card);
+  }
+
+  /* 🔽 SCROLLABLE LOG LIST (FIX) */
+  .activity-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+
+  .activity-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .activity-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+  }
+
+  .activity-item {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+  }
+
+  .activity-item:hover {
+    transform: translateX(4px);
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .risk-high {
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.08), transparent);
+  }
+
+  .risk-medium {
+    border-left: 4px solid #facc15;
+    background: linear-gradient(to right, rgba(250, 204, 21, 0.08), transparent);
+  }
+</style>
+</head>
+
+<body>
+
+<header class="flex justify-between items-center px-6 py-4 bg-gray-900 shadow-md">
+  <a href="{{ url_for('dashboard') }}" class="text-xl font-semibold">← SecureVault</a>
+</header>
+
+<main class="p-6">
+  <div class="max-w-7xl mx-auto">
+
+    <h1 class="text-2xl font-semibold mb-6">Account Activity</h1>
+
+    {% if logs %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+      {% set grouped = {} %}
+      {% for log in logs %}
+        {% set day = log.created_at.strftime("%Y-%m-%d")
+           if log.created_at.__class__.__name__ != 'str'
+           else log.created_at.split(' ')[0] %}
+        {% if day not in grouped %}
+          {% set _ = grouped.update({ day: [] }) %}
+        {% endif %}
+        {% set _ = grouped[day].append(log) %}
+      {% endfor %}
+
+      {% for day in grouped.keys() | sort(reverse=True) %}
+      {% set day_logs = grouped[day] %}
+
+      <div class="card rounded-xl shadow-lg p-5 flex flex-col">
+
+        <!-- Date -->
+        <div class="mb-4 flex items-center gap-2 text-blue-400 font-semibold">
+          <i class="fa-solid fa-calendar-day"></i> {{ day }}
+        </div>
+
+        <!-- 🔽 SCROLLABLE AREA -->
+        <div class="activity-scroll space-y-4">
+
+          {% for log in day_logs %}
+          {% set action = log.action.split('|')[0] %}
+
+          {% set risk_class =
+            "risk-high" if action in [
+              "VAULT_PASSWORD_DELETED",
+              "VAULT_EXPORTED",
+              "VAULT_BACKUP_RESTORED"
+            ]
+            else "risk-medium" if action == "VAULT_PASSWORD_VIEWED"
+            else ""
+          %}
+
+          <div class="flex gap-3 items-start activity-item rounded-md p-2 {{ risk_class }}">
+
+            <div class="pt-1">
+              <i class="fa-solid fa-shield text-cyan-400"></i>
+            </div>
+
+            <div class="flex-1">
+              <p class="text-sm font-medium">
+                {{ action.replace("_", " ").title() }}
+              </p>
+            </div>
+
+            <div class="text-xs opacity-60">
+              {{ log.created_at.strftime("%H:%M") }}
+            </div>
+
+          </div>
+          {% endfor %}
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="text-center py-20 opacity-70">
+      No activity yet
+    </div>
+    {% endif %}
+
+  </div>
+</main>
+
+</body>
+</html>
+
+

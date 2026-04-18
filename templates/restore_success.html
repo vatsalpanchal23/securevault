@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Restore Successful – SecureVault</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+
+<div class="bg-gray-800 rounded-xl shadow-lg p-8 max-w-xl w-full text-center">
+
+  <h1 class="text-2xl font-bold text-green-400 mb-2">✅ Vault Restored Successfully</h1>
+  <p class="text-gray-400 mb-6">
+    Your encrypted backup has been restored safely.
+  </p>
+
+  <div class="bg-gray-900 rounded-lg p-4 mb-6 text-left text-sm">
+    <p><b>Passwords restored:</b> {{ restored_count }}</p>
+    <p><b>Backup created on:</b> {{ backup_time }}</p>
+    <p><b>Restored at:</b> Just now</p>
+  </div>
+
+  <div class="flex justify-between gap-4">
+    <a href="/dashboard"
+       class="w-full bg-blue-600 hover:bg-blue-700 transition p-3 rounded font-medium">
+      Go to Dashboard
+    </a>
+
+    <a href="/activity"
+       class="w-full bg-gray-700 hover:bg-gray-600 transition p-3 rounded font-medium">
+      View Activity Log
+    </a>
+  </div>
+
+</div>
+
+</body>
+</html>

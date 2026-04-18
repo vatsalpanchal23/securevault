@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Lab – Breach Simulation</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  /* =======================
+     Base
+  ======================== */
+  body {
+    font-family: Inter, sans-serif;
+    background: #0b1220;
+    color: #e5e7eb;
+  }
+
+  /* =======================
+     Glass UI
+  ======================== */
+  .glass {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(14px);
+  }
+
+  /* =======================
+     Layout Cards
+  ======================== */
+  .main-card {
+    min-height: 320px;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    transition: box-shadow .3s ease;
+  }
+
+  .side-block {
+    min-height: 320px;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    position: relative;
+  }
+
+  .container-max {
+    max-width: 1200px;
+    margin: auto;
+  }
+
+  /* =======================
+     Typography / Labels
+  ======================== */
+  .side-title {
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    opacity: 0.7;
+  }
+
+  /* =======================
+     State Indicators
+  ======================== */
+  .encrypted {
+    border-left: 3px solid #22c55e;
+  }
+
+  .plaintext {
+    border-left: 3px solid #ef4444;
+  }
+
+  /* =======================
+     Utility
+  ======================== */
+  .hidden {
+    display: none;
+  }
+
+  /* =======================
+     Slide Animation
+  ======================== */
+  .side-slide {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    animation: slideIn .35s ease forwards;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* =======================
+     Highlight Effects
+  ======================== */
+  .highlight-secure {
+    animation: pulseSafe 1.8s infinite ease-in-out;
+  }
+
+  .highlight-danger {
+    animation: pulseDanger 1.4s infinite ease-in-out;
+  }
+
+  /* =======================
+     Pulse Animations
+  ======================== */
+  @keyframes pulseSafe {
+    0% {
+      box-shadow:
+        0 0 0 2px rgba(34,197,94,.35),
+        0 0 0 rgba(34,197,94,0);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px rgba(34,197,94,.6),
+        0 0 28px rgba(34,197,94,.55);
+    }
+    100% {
+      box-shadow:
+        0 0 0 2px rgba(34,197,94,.35),
+        0 0 0 rgba(34,197,94,0);
+    }
+  }
+
+  @keyframes pulseDanger {
+    0% {
+      box-shadow:
+        0 0 0 2px rgba(239,68,68,.35),
+        0 0 0 rgba(239,68,68,0);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px rgba(239,68,68,.7),
+        0 0 32px rgba(239,68,68,.6);
+    }
+    100% {
+      box-shadow:
+        0 0 0 2px rgba(239,68,68,.35),
+        0 0 0 rgba(239,68,68,0);
+    }
+  }
+
+  /* =======================
+   Background Threat State
+======================== */
+body.threat-active {
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(239, 68, 68, 0.12),
+      #0b1220 55%
+    );
+  transition: background 0.6s ease;
+}
+
+/* =======================
+   Pre-Simulation State
+======================== */
+body.pre-simulation main {
+  filter: blur(2px) brightness(0.75);
+  pointer-events: none;
+  transition: filter 0.6s ease;
+}
+
+
+/* =======================
+   Control Bar States
+======================== */
+.simulation-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.simulation-controls button {
+  transition: background 0.25s ease, opacity 0.25s ease;
+}
+
+body.sim-running #start-btn {
+  display: none;
+}
+
+body.sim-running #next-btn {
+  display: inline-flex;
+}
+
+body.sim-complete #next-btn {
+  display: none;
+}
+
+body.sim-complete #replay-btn {
+  display: inline-flex;
+}
+
+/* Prevent dead vertical space feeling */
+.container-max + .container-max {
+  margin-top: 2.5rem;
+}
+
+.btn-primary:hover {
+  background: #1e40af;
+}
+
+.simulation-controls {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+}
+
+
+</style>
+
+</head>
+
+<body class="pre-simulation">
+
+<header class="px-8 py-5 border-b border-white/10">
+  <h1 class="text-xl font-semibold flex items-center gap-2">
+    🧪 Security Lab – Breach Simulation
+  </h1>
+</header>
+
+<!-- CONTROL BAR -->
+<div class="container-max px-8 mt-6 flex gap-4 simulation-controls justify-end">
+
+  <button
+    id="start-btn"
+    onclick="startAutoPlay()"
+    class="px-6 py-2 bg-blue-600 rounded font-medium
+           hover:bg-blue-500 transition">
+    ▶ Live Breach Simulation
+  </button>
+
+  <button
+    id="next-btn"
+    onclick="nextSlide()"
+    class="px-5 py-2 bg-gray-700 rounded hidden">
+    End 
+  </button>
+
+  <button
+    id="replay-btn"
+    onclick="replaySimulation()"
+    class="px-5 py-2 bg-gray-600 rounded hidden">
+    ↻ Replay Simulation
+  </button>
+</div>
+
+<!-- SIMULATION HEADER / INTRO (MERGED) -->
+<div class="container-max px-8 mt-8">
+  <div class="glass rounded-2xl p-6 border border-white/10
+              flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+
+    <!-- LEFT: CONTEXT -->
+    <div>
+      <h2
+        id="sim-title"
+        class="text-lg font-semibold text-white flex items-center gap-2">
+        🔐 Database Breach Impact Lab
+      </h2>
+
+      <p
+        id="sim-description"
+        class="text-sm text-gray-400 mt-1 max-w-2xl">
+        System is currently secure. Start the simulation to observe how encrypted
+        storage limits damage after a database breach, compared to plaintext exposure.
+      </p>
+
+      <div
+        id="sim-tags"
+        class="mt-3 flex gap-2 text-xs">
+        <span class="px-3 py-1 rounded-full
+                     bg-green-500/10 text-green-400 border border-green-500/20">
+          Secure by Design
+        </span>
+        <span class="px-3 py-1 rounded-full
+                     bg-gray-500/10 text-gray-400 border border-gray-500/20">
+          Idle
+        </span>
+      </div>
+    </div>
+
+    <!-- RIGHT: SYSTEM STATUS -->
+    <div class="text-sm text-gray-400">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+        No Active Breach
+      </div>
+      <div class="flex items-center gap-2 mt-1">
+        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+        Database Protected
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<main class="container-max px-8 py-16 space-y-16">
+
+<!-- SIMULATION RESULT -->
+<div
+  id="simulation-complete"
+  class="container-max px-8 mt-8 hidden">
+
+  <div class="glass rounded-2xl p-6 border border-green-500/20
+              flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    <div class="text-green-300 text-sm flex items-center gap-2">
+      ✅ Simulation Complete — Security Impact Demonstrated
+    </div>
+
+    <button
+      onclick="downloadReport()"
+      class="px-5 py-2 text-sm rounded
+             bg-green-600/20 text-green-300
+             border border-green-500/30
+             hover:bg-green-600/30 transition">
+      ⬇ Download Breach Report
+    </button>
+
+  </div>
+</div>
+
+
+
+
+  <!-- SECTION 1 -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
+
+  <!-- SIDE LEFT -->
+  <div class="side-block glass encrypted" id="side-encrypted">
+    <div class="side-static">
+      <div class="side-title">Encrypted Storage</div>
+      ✔ Encrypted at rest<br>
+      ✔ Ciphertext only<br>
+      ✔ Key stored separately<br>
+      ✔ Safe after DB breach
+    </div>
+    <div class="side-slide hidden"></div>
+  </div>
+
+  <!-- CARD RIGHT -->
+<div class="md:col-span-2">
+  <div class="main-card glass" id="card-encrypted">
+    <h3 class="text-green-400 font-semibold mb-3">
+      Encrypted Database View
+    </h3>
+
+    <span
+      class="inline-block mb-4 text-xs tracking-widest uppercase
+             px-3 py-1 rounded-full
+             bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse">
+      Database Dump – Compromised
+    </span>
+
+    <div class="space-y-2 text-sm font-mono text-gray-400">
+      <div class="flex justify-between">
+        <span>user_id</span>
+        <span class="truncate">gAAAAABlY9xQm2F8K3R...</span>
+      </div>
+      <div class="flex justify-between">
+        <span>username</span>
+        <span class="truncate">gAAAAABlY9xR9L0xTnP...</span>
+      </div>
+      <div class="flex justify-between">
+        <span>password</span>
+        <span class="truncate">gAAAAABlY9xS2KqVhA8...</span>
+      </div>
+      <div class="flex justify-between">
+        <span>vault_data</span>
+        <span class="truncate">gAAAAABlY9xT7YF4MZc...</span>
+      </div>
+    </div>
+
+    <p class="mt-4 text-xs text-gray-500 italic">
+      All values are encrypted at rest. No plaintext leakage possible.
+    </p>
+
+    <p
+      id="bruteforce-status"
+      class="mt-4 text-xs text-red-400 font-mono hidden">
+      Attempting brute-force… FAILED ❌
+    </p>
+  </div>
+</div>
+
+</section>
+
+
+  <!-- SECTION 2 -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
+
+  <!-- CARD LEFT -->
+  <div class="md:col-span-2">
+    <div class="main-card glass" id="card-plaintext">
+      <h3 class="text-red-400 font-semibold mb-3">
+        Plaintext Exposure (Demo)
+      </h3>
+
+      <div class="space-y-3 text-xs font-mono text-red-300/90">
+
+        <pre class="bg-black/30 p-3 rounded">
+service: gmail
+user: vatsal@demo.com
+password: MyDog@123
+        </pre>
+
+        <pre class="bg-black/30 p-3 rounded">
+service: github
+user: vatsal-sec
+password: github_pass_2024
+        </pre>
+
+        <pre class="bg-black/30 p-3 rounded">
+service: bank
+user: vatsal@bank
+password: SBI@98765
+        </pre>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE RIGHT -->
+  <div class="side-block glass plaintext" id="side-plaintext">
+    <div class="side-static">
+      <div class="side-title">Plaintext Risk</div>
+      ⚠ Passwords readable<br>
+      ⚠ Instant account takeover<br>
+      ⚠ No protection layer<br>
+      ⚠ Total compromise
+    </div>
+    <div class="side-slide hidden"></div>
+  </div>
+
+</section>
+
+
+</main>
+
+<script>
+
+let currentSlide = 0;
+let autoPlayTimer = null;
+let isAutoPlaying = false;
+
+const walkthroughSlides = [
+  {
+    target: 'encrypted',
+    text: 'Database breach detected. Encrypted records have been exfiltrated.'
+  },
+  {
+    target: 'encrypted',
+    text: 'Attacker attempts to decrypt stolen data — fails without the encryption key.'
+  },
+  {
+    target: 'plaintext',
+    text: 'Database breach detected. Passwords are exposed in plaintext.'
+  },
+  {
+    target: 'plaintext',
+    text: 'Accounts are compromised within seconds of the breach.'
+  },
+  {
+    target: 'summary',
+    text: 'Outcome: Encryption limits damage. Plaintext storage results in total credential compromise.'
+  }
+];
+
+
+
+let step = 0;
+
+const cardEncrypted = document.getElementById('card-encrypted');
+const cardPlaintext = document.getElementById('card-plaintext');
+
+const sideEncrypted = document.getElementById('side-encrypted');
+const sidePlaintext = document.getElementById('side-plaintext');
+
+function startWalkthrough() {
+  step = 0;
+  activateSlide();
+}
+
+function nextSlide() {
+  step++;
+  activateSlide();
+}
+
+
+
+
+function activateSlide() {
+  resetState();
+  const slide = walkthroughSlides[step];
+
+  if (slide.target === 'encrypted') {
+    showSlide(sideEncrypted, slide.text);
+    cardEncrypted.classList.add('highlight-secure');
+    cardEncrypted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    setTimeout(showBruteforceAttempt, 1800);
+  }
+
+  if (slide.target === 'plaintext') {
+    showSlide(sidePlaintext, slide.text);
+    cardPlaintext.classList.add('highlight-danger');
+    cardPlaintext.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    document.body.classList.add('threat-active');
+  }
+
+  if (slide.target === 'summary') {
+    showSlide(sideEncrypted, '✔ Encryption prevents usable data leakage.');
+    showSlide(sidePlaintext, '✖ Plaintext storage leads to full credential exposure.');
+
+    cardEncrypted.classList.add('highlight-secure');
+    cardPlaintext.classList.add('highlight-danger');
+
+    cardEncrypted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+
+
+
+function showSlide(sideBlock, text) {
+  sideBlock.querySelector('.side-static').classList.add('hidden');
+  const slideBox = sideBlock.querySelector('.side-slide');
+  slideBox.textContent = text;
+  slideBox.classList.remove('hidden');
+}
+
+function resetState() {
+  // Reset side panels
+  document.querySelectorAll('.side-slide').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.side-static').forEach(s => s.classList.remove('hidden'));
+
+  // Reset card highlights
+  cardEncrypted.classList.remove('highlight-secure');
+  cardPlaintext.classList.remove('highlight-danger');
+
+  // Reset background threat state
+  document.body.classList.remove('threat-active');
+
+  // Reset brute-force status (important for replay)
+  const bf = document.getElementById('bruteforce-status');
+  if (bf) {
+    bf.classList.add('hidden');
+  }
+}
+
+
+
+function endWalkthrough() {
+  // Walkthrough lifecycle hook
+  // Intentionally left minimal to avoid resetting final state
+}
+
+
+let autoPlayInterval = null;
+
+function startAutoPlay() {
+  setState('sim-running');
+
+  if (autoPlayInterval) {
+    clearInterval(autoPlayInterval);
+    autoPlayInterval = null;
+  }
+
+  step = 0;
+  activateSlide();
+
+  autoPlayInterval = setInterval(() => {
+    if (step >= walkthroughSlides.length - 1) {
+      endAutoPlay();
+      return;
+    }
+
+    step++;
+    activateSlide();
+  }, 2500);
+}
+
+
+
+
+
+function showBruteforceAttempt() {
+  const bf = document.getElementById('bruteforce-status');
+  if (bf) {
+    bf.classList.remove('hidden');
+  }
+}
+
+function endSimulation() {
+  const completeBadge = document.getElementById('simulation-complete');
+  if (completeBadge) {
+    completeBadge.classList.remove('hidden');
+  }
+
+  // Set simulation state (single source of truth)
+  setState('sim-complete');
+}
+
+
+
+function replaySimulation() {
+  // Hard stop any running autoplay
+  if (autoPlayInterval) {
+    clearInterval(autoPlayInterval);
+    autoPlayInterval = null;
+  }
+
+  // Reset slide index
+  step = 0;
+
+  // Reset visuals
+  resetState();
+  activateSlide();
+
+  // Hide completion badge
+  const completeBadge = document.getElementById('simulation-complete');
+  if (completeBadge) {
+    completeBadge.classList.add('hidden');
+  }
+
+  // ✅ FORCE autoplay lifecycle again
+  startAutoPlay();
+}
+
+
+
+function downloadReport() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const logoPath = '/static/logo.png';
+
+  // Generate simulation ID
+  const simulationId =
+    'SV-' +
+    Math.random().toString(36).substring(2, 8).toUpperCase() +
+    '-' +
+    Date.now().toString().slice(-4);
+
+  let y = 20;
+
+  const img = new Image();
+  img.src = logoPath;
+
+  img.onload = () => {
+    /* =========================
+       TEXT WATERMARK (HORIZONTAL)
+    ========================= */
+    doc.setGState(new doc.GState({ opacity: 0.08 }));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(42);
+    doc.setTextColor(150);
+    doc.text(
+      'SecureVault Security Lab',
+      pageWidth / 2,
+      pageHeight / 2,
+      { align: 'center' }
+    );
+    doc.setGState(new doc.GState({ opacity: 1 }));
+    doc.setTextColor(0);
+
+    /* =========================
+       HEADER LOGO
+    ========================= */
+    doc.addImage(img, 'PNG', pageWidth / 2 - 15, y, 30, 30);
+    y += 40;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SecureVault – Breach Simulation Report', pageWidth / 2, y, {
+      align: 'center',
+    });
+
+    y += 8;
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Simulation ID: ${simulationId}`, pageWidth / 2, y, {
+      align: 'center',
+    });
+
+    doc.setTextColor(0);
+    y += 10;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    /* =========================
+       SUMMARY
+    ========================= */
+    doc.setFontSize(11);
+    doc.text('Simulation Status: COMPLETED', 20, y);
+    y += 10;
+
+    /* =========================
+       ENCRYPTED STORAGE
+    ========================= */
+    doc.setFont('helvetica', 'bold');
+    doc.text('Encrypted Storage Outcome', 20, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      [
+        '- Data encrypted at rest',
+        '- Ciphertext-only exposure',
+        '- Encryption key isolated',
+        '- Brute-force attempt: FAILED',
+      ],
+      25,
+      y
+    );
+    y += 30;
+
+    /* =========================
+       PLAINTEXT STORAGE
+    ========================= */
+    doc.setFont('helvetica', 'bold');
+    doc.text('Plaintext Storage Outcome', 20, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      [
+        '- Passwords exposed in plaintext',
+        '- Immediate credential compromise',
+        '- High account takeover risk',
+      ],
+      25,
+      y
+    );
+    y += 26;
+
+    /* =========================
+       RISK CHART
+    ========================= */
+    doc.setFont('helvetica', 'bold');
+    doc.text('Risk Exposure Comparison', 20, y);
+    y += 10;
+
+    const chartX = 30;
+    const chartY = y;
+    const barHeight = 8;
+
+    doc.setFontSize(10);
+    doc.text('Encrypted', chartX, chartY);
+    doc.text('Plaintext', chartX, chartY + 15);
+
+    doc.setFillColor(34, 197, 94); // green
+    doc.rect(chartX + 30, chartY - 5, 30, barHeight, 'F');
+
+    doc.setFillColor(239, 68, 68); // red
+    doc.rect(chartX + 30, chartY + 10, 90, barHeight, 'F');
+
+    y += 30;
+
+    /* =========================
+       CONCLUSION
+    ========================= */
+    doc.setFont('helvetica', 'bold');
+    doc.text('Security Conclusion', 20, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      'Encryption dramatically reduces the impact of database breaches by rendering stolen data unusable without cryptographic keys.',
+      25,
+      y,
+      { maxWidth: pageWidth - 50 }
+    );
+
+    /* =========================
+       FOOTER
+    ========================= */
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(
+      `Generated by SecureVault Security Lab • ${new Date().toLocaleString()}`,
+      pageWidth / 2,
+      pageHeight - 10,
+      { align: 'center' }
+    );
+
+    doc.save(`SecureVault_Report_${simulationId}.pdf`);
+  };
+}
+
+
+function setState(state) {
+  // Clear lifecycle states ONLY
+  document.body.classList.remove(
+    'pre-simulation',
+    'sim-running',
+    'sim-complete'
+  );
+
+  // Apply new lifecycle state
+  document.body.classList.add(state);
+
+  // Header elements
+  const desc = document.getElementById('sim-description');
+  const tags = document.getElementById('sim-tags');
+
+  if (!desc || !tags) return;
+
+  if (state === 'pre-simulation') {
+    desc.textContent =
+      'System is currently secure. Start the simulation to observe how encrypted storage limits damage after a database breach, compared to plaintext exposure.';
+
+    tags.innerHTML = `
+      <span class="px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+        Secure by Design
+      </span>
+      <span class="px-3 py-1 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">
+        Idle
+      </span>
+    `;
+  }
+
+  if (state === 'sim-running') {
+    desc.textContent =
+      'Breach simulation running. Observe how attackers interact with encrypted versus plaintext database contents.';
+
+    tags.innerHTML = `
+      <span class="px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+        Active Breach
+      </span>
+      <span class="px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+        Live Simulation
+      </span>
+    `;
+  }
+
+  if (state === 'sim-complete') {
+    desc.textContent =
+      'Simulation complete. Review the outcome and download the incident report.';
+
+    tags.innerHTML = `
+      <span class="px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+        Completed
+      </span>
+    `;
+  }
+}
+
+
+function endAutoPlay() {
+  clearInterval(autoPlayInterval);
+  autoPlayInterval = null;
+
+  const completeBadge = document.getElementById('simulation-complete');
+  if (completeBadge) completeBadge.classList.remove('hidden');
+
+  setState('sim-complete');
+}
+
+
+</script>
+
+</body>
+</html>
+
+
+
+
